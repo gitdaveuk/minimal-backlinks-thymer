@@ -1,13 +1,11 @@
 class Plugin extends AppPlugin {
   onLoad() {
-    // 1. Initialize State Immediately
     this._panelCleanups = new Map();
     this._navHandler = null;
     this._recordHandler = null;
     this._lineHandler = null;
     this._editingLineGuid = null;
 
-    // 2. Native Outliner CSS
     this.ui.injectCSS(`
       .backref-panel {
         border-top: 1px solid var(--color-border, #e2e8f0);
@@ -19,7 +17,7 @@ class Plugin extends AppPlugin {
         color: var(--color-text-tertiary, #94a3b8); font-size: 11px;
         font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
       }
-      .backref-list { display: flex; flex-direction: column; gap: 12px; }
+      .backref-list { display: flex; flex-direction: column; gap: 16px; }
       .backref-item { display: flex; flex-direction: column; }
       .backref-item-header { 
         display: flex; align-items: center; gap: 10px; cursor: pointer; 
@@ -29,29 +27,29 @@ class Plugin extends AppPlugin {
       .backref-chevron { font-size: 10px; transition: transform 0.2s; opacity: 0.4; }
       .backref-item.expanded .backref-chevron { transform: rotate(90deg); }
       .backref-title-link { font-weight: 700; font-size: 14px; color: var(--color-text-primary); cursor: pointer; }
+      
       .backref-portal-content {
-        margin-top: 8px; display: none; padding-left: 16px;
+        margin-top: 8px; display: none; padding-left: 12px;
         border-left: 1px solid var(--color-border); flex-direction: column;
       }
       .backref-item.expanded .backref-portal-content { display: flex; }
 
-      /* Portal Lines */
-      .portal-line { display: flex; align-items: flex-start; gap: 10px; padding: 2px 8px; min-height: 24px; border-radius: 4px; }
-      .portal-line:hover { background: var(--color-bg-secondary); }
+      .portal-line-wrapper { display: flex; flex-direction: column; }
+      .portal-line-row { display: flex; align-items: flex-start; gap: 10px; padding: 2px 8px; min-height: 24px; border-radius: 4px; }
+      .portal-line-row:hover { background: var(--color-bg-secondary); }
       
-      .portal-editor { flex: 1; outline: none; line-height: 1.6; color: var(--color-text-secondary); font-size: 14px; word-break: break-word; }
-      .portal-editor[contenteditable="true"] { color: var(--color-text-primary); }
-      
-      /* Prefixes: Bullets and Checkboxes */
       .portal-prefix { width: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 4px; }
       .portal-bullet { font-size: 16px; color: var(--color-text-tertiary); line-height: 1; }
       .portal-cb { width: 15px; height: 15px; cursor: pointer; }
 
-      /* Type Styling */
-      .type-heading .portal-editor { font-weight: 700; color: var(--color-text-primary); font-size: 1.25em; }
-      .type-quote .portal-editor { border-left: 3px solid var(--color-border); padding-left: 12px; font-style: italic; }
+      .portal-editor { flex: 1; outline: none; line-height: 1.6; color: var(--color-text-secondary); font-size: 14px; word-break: break-word; }
+      .portal-editor[contenteditable="true"] { color: var(--color-text-primary); }
       
-      .seg-link, .seg-ref { color: var(--color-accent); cursor: pointer; font-weight: 500; }
+      .portal-children { padding-left: 24px; }
+
+      .seg-link, .seg-ref, .seg-datetime { color: var(--color-accent, #6366f1); cursor: pointer; font-weight: 500; }
+      .seg-datetime { background: rgba(99, 102, 241, 0.08); padding: 0 6px; border-radius: 10px; border: 1px solid rgba(99, 102, 241, 0.2); font-size: 0.95em; }
+      .type-heading .portal-editor { font-weight: 700; color: var(--color-text-primary); font-size: 1.25em; }
     `);
 
     const refresh = () => {
@@ -118,12 +116,11 @@ class Plugin extends AppPlugin {
       else if (typeof record.getBackreferences === 'function') refs = await record.getBackreferences();
 
       badge.textContent = `(${refs.length})`;
-      if (refs.length === 0) { list.innerHTML = `<div style="opacity:0.5; font-style:italic;">No mentions.</div>`; return; }
+      if (refs.length === 0) { list.innerHTML = `<div style="opacity:0.5; font-style:italic; padding-left: 20px;">No mentions.</div>`; return; }
 
       const uniqueRecs = new Map();
       for (const ref of refs) if (ref.record && !uniqueRecs.has(ref.record.guid)) uniqueRecs.set(ref.record.guid, ref.record);
 
-      list.innerHTML = '';
       for (const src of uniqueRecs.values()) {
         const item = document.createElement('div');
         item.className = 'backref-item';
@@ -132,12 +129,8 @@ class Plugin extends AppPlugin {
 
         const header = document.createElement('div');
         header.className = 'backref-item-header';
-        header.innerHTML = `
-          <span class="ti ti-chevron-right backref-chevron"></span>
-          <span class="ti ${src.getIcon(true) || 'ti-file-text'}" style="opacity:0.6; font-size:14px;"></span>
-          <span class="backref-title-link">${this.ui.htmlEscape(src.getName())}</span>
-        `;
-
+        header.innerHTML = `<span class="ti ti-chevron-right backref-chevron"></span><span class="ti ${src.getIcon(true) || 'ti-file-text'}" style="opacity:0.6; font-size:14px;"></span><span class="backref-title-link">${this.ui.htmlEscape(src.getName())}</span>`;
+        
         const portal = document.createElement('div');
         portal.className = 'backref-portal-content';
 
@@ -152,11 +145,9 @@ class Plugin extends AppPlugin {
 
         if (expanded.has(src.guid)) this._renderPortal(src, portal, panel);
 
-        item.appendChild(header);
-        item.appendChild(portal);
-        list.appendChild(item);
+        item.appendChild(header); item.appendChild(portal); list.appendChild(item);
       }
-    } catch (e) { list.innerHTML = "Error loading."; }
+    } catch (e) { list.innerHTML = "Error."; }
   }
 
   async _renderPortal(record, container, panel) {
@@ -164,18 +155,41 @@ class Plugin extends AppPlugin {
       const lines = await record.getLineItems(true);
       container.innerHTML = '';
       if (lines.length === 0) return;
+
       const lineMap = new Map(lines.map(l => [l.guid, l]));
+      const roots = lines.filter(l => !l.parent_guid || !lineMap.has(l.parent_guid));
 
-      for (const line of lines) {
-        const row = document.createElement('div');
-        row.className = `portal-line type-${line.type}`;
+      // Global Navigation Helper for this Portal
+      const focusEditorIndex = (idx, atStart) => {
+          const editors = Array.from(container.querySelectorAll('.portal-editor'));
+          const target = editors[idx];
+          if (!target) return;
+          const targetGuid = target.getAttribute('data-guid');
+          const targetLine = lineMap.get(targetGuid);
+          
+          target.textContent = (targetLine.segments || []).map(s => {
+              if (typeof s.text === 'string') return s.text;
+              if (s.type === 'datetime') return '@' + new DateTime(s.text).toDate().toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+              return (s.text?.title || '');
+          }).join('');
+
+          target.contentEditable = 'true';
+          this._editingLineGuid = targetGuid;
+          target.focus();
+          
+          const range = document.createRange(), sel = window.getSelection();
+          range.selectNodeContents(target);
+          range.collapse(atStart);
+          sel.removeAllRanges(); sel.addRange(range);
+      };
+
+      const renderNode = (line, targetContainer) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'portal-line-wrapper';
         
-        // Depth Calculation
-        let depth = 0, cur = line.parent_guid;
-        while (cur && lineMap.has(cur)) { depth++; cur = lineMap.get(cur).parent_guid; }
-        row.style.paddingLeft = `${(depth * 24) + 8}px`;
+        const row = document.createElement('div');
+        row.className = `portal-line-row type-${line.type}`;
 
-        // Native Prefix Logic (Tasks vs Bullets vs None)
         const prefix = document.createElement('div');
         prefix.className = 'portal-prefix';
         if (line.type === 'task') {
@@ -184,9 +198,7 @@ class Plugin extends AppPlugin {
           cb.onclick = (e) => { e.stopPropagation(); line.setTaskStatus(cb.checked ? 'done' : 'none'); };
           prefix.appendChild(cb);
         } else if (line.type === 'ulist' || line.type === 'olist') {
-          const bull = document.createElement('div');
-          bull.className = 'portal-bullet'; bull.textContent = '•';
-          prefix.appendChild(bull);
+          prefix.innerHTML = '<div class="portal-bullet">•</div>';
         }
         row.appendChild(prefix);
 
@@ -194,14 +206,31 @@ class Plugin extends AppPlugin {
         editor.className = 'portal-editor';
         editor.setAttribute('data-guid', line.guid);
         
-        const getRaw = () => (line.segments || []).map(s => typeof s.text === 'string' ? s.text : (s.text?.title || s.text?.link || '')).join('');
+        const getRaw = () => (line.segments || []).map(s => {
+            if (typeof s.text === 'string') return s.text;
+            if (s.type === 'datetime') {
+                try { return '@' + new DateTime(s.text).toDate().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+                catch(e) { return '@date'; }
+            }
+            return (s.text?.title || s.text?.link || '');
+        }).join('');
 
         const renderRich = () => {
           editor.innerHTML = '';
           (line.segments || []).forEach(seg => {
             const span = document.createElement('span');
             span.className = `seg-${seg.type}`;
-            if (seg.type === 'ref') {
+            if (seg.type === 'datetime') {
+                try {
+                    const dtObj = new DateTime(seg.text);
+                    span.textContent = '@' + dtObj.toDate().toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                    span.onmousedown = (e) => {
+                        e.stopPropagation();
+                        const user = this.data.getActiveUsers()[0];
+                        if (user) panel.navigateToJournal(user, dtObj);
+                    };
+                } catch(e) { span.textContent = '@date'; }
+            } else if (seg.type === 'ref') {
               const r = this.data.getRecord(seg.text.guid);
               span.textContent = seg.text.title || (r ? r.getName() : '[[...]]');
               span.onmousedown = (e) => { e.stopPropagation(); panel.navigateTo({ type: 'edit_panel', rootId: seg.text.guid, workspaceGuid: this.getWorkspaceGuid() }); };
@@ -212,30 +241,15 @@ class Plugin extends AppPlugin {
 
         renderRich();
 
-        // Robust Navigation Helper
-        const focusNext = (targetEditor, atStart) => {
-          if (!targetEditor) return;
-          const targetGuid = targetEditor.getAttribute('data-guid');
-          const targetLine = lineMap.get(targetGuid);
-          targetEditor.textContent = (targetLine.segments || []).map(s => typeof s.text === 'string' ? s.text : (s.text?.title || s.text?.link || '')).join('');
-          targetEditor.contentEditable = 'true';
-          this._editingLineGuid = targetGuid;
-          targetEditor.focus();
-          const range = document.createRange(), sel = window.getSelection();
-          range.selectNodeContents(targetEditor);
-          range.collapse(atStart);
-          sel.removeAllRanges(); sel.addRange(range);
-        };
-
         editor.onmousedown = (e) => {
-          if (e.target.classList.contains('seg-link') || e.target.classList.contains('seg-ref')) return;
+          if (e.target.classList.contains('seg-link') || e.target.classList.contains('seg-ref') || e.target.classList.contains('seg-datetime')) return;
           if (editor.contentEditable !== 'true') {
             const x = e.clientX, y = e.clientY;
             editor.textContent = getRaw();
             editor.contentEditable = 'true';
             this._editingLineGuid = line.guid;
             editor.focus();
-            const range = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
+            let range = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
             if (range) { const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); }
           }
         };
@@ -249,33 +263,44 @@ class Plugin extends AppPlugin {
         };
 
         editor.onkeydown = async (e) => {
-          const sel = window.getSelection();
-          const offset = sel.anchorOffset;
+            const sel = window.getSelection();
+            const offset = sel.anchorOffset;
+            const editors = Array.from(container.querySelectorAll('.portal-editor'));
+            const currentIdx = editors.indexOf(editor);
 
-          if (e.key === 'ArrowUp' && offset === 0) {
-            e.preventDefault();
-            const prev = row.previousElementSibling?.querySelector('.portal-editor');
-            if (prev) { editor.blur(); focusNext(prev, false); }
-          } else if (e.key === 'ArrowDown' && offset === editor.textContent.length) {
-            e.preventDefault();
-            const next = row.nextElementSibling?.querySelector('.portal-editor');
-            if (next) { editor.blur(); focusNext(next, true); }
-          } else if (e.key === 'Enter') {
-            e.preventDefault(); editor.blur();
-            await record.createLineItem(lineMap.get(line.parent_guid) || null, line, 'text', null, null);
-            this._renderPortal(record, container, panel);
-          } else if (e.key === 'Backspace' && editor.textContent === '') {
-            e.preventDefault();
-            const prev = row.previousElementSibling?.querySelector('.portal-editor');
-            editor.blur(); await line.delete();
-            this._renderPortal(record, container, panel);
-            if (prev) focusNext(prev, false);
-          }
+            if (e.key === 'ArrowUp' && offset === 0) {
+                e.preventDefault();
+                if (currentIdx > 0) { editor.blur(); focusEditorIndex(currentIdx - 1, false); }
+            } else if (e.key === 'ArrowDown' && offset === editor.textContent.length) {
+                e.preventDefault();
+                if (currentIdx < editors.length - 1) { editor.blur(); focusEditorIndex(currentIdx + 1, true); }
+            } else if (e.key === 'Enter') {
+                e.preventDefault(); editor.blur();
+                await record.createLineItem(lineMap.get(line.parent_guid) || null, line, 'text', null, null);
+                await this._renderPortal(record, container, panel);
+                focusEditorIndex(currentIdx + 1, true);
+            } else if (e.key === 'Backspace' && editor.textContent === '') {
+                e.preventDefault(); editor.blur();
+                await line.delete();
+                await this._renderPortal(record, container, panel);
+                if (currentIdx > 0) focusEditorIndex(currentIdx - 1, false);
+            }
         };
 
         row.appendChild(editor);
-        container.appendChild(row);
-      }
-    } catch (e) { container.innerHTML = "Error rendering."; }
+        wrapper.appendChild(row);
+
+        const children = lines.filter(l => l.parent_guid === line.guid);
+        if (children.length > 0) {
+            const childCont = document.createElement('div');
+            childCont.className = 'portal-children';
+            children.forEach(c => renderNode(c, childCont));
+            wrapper.appendChild(childCont);
+        }
+        targetContainer.appendChild(wrapper);
+      };
+
+      roots.forEach(r => renderNode(r, container));
+    } catch (e) { container.innerHTML = "Error."; }
   }
 }
