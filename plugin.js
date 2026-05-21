@@ -8,7 +8,7 @@ class Plugin extends AppPlugin {
 
     this.ui.injectCSS(`
       .backref-panel {
-        border-top: 1px solid var(--color-border, #e2e8f0);
+        border-top: 0px solid var(--color-border, #e2e8f0);
         margin: 40px 0 80px 0; /* Align to left/right margins of the note */
         padding-top: 24px;
       }
