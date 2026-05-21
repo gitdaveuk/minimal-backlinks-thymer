@@ -1,0 +1,22 @@
+{
+	"ver": 1,
+	"name": "Backreferences ds",
+	"icon": "paperclip",
+	"off": false,
+	"item_name": "Reference",
+	"description": "Shows all notes that link to the currently open record, with context.",
+	"show_sidebar_items": false,
+	"show_cmdpal_items": false,
+	"views": [],
+	"fields": [],
+	"page_field_ids": [],
+	"sidebar_record_sort_field_id": "",
+	"sidebar_record_sort_dir": "asc",
+	"managed": {
+		"fields": true,
+		"views": true,
+		"sidebar": true
+	},
+	"custom": {},
+	"home": false
+}
