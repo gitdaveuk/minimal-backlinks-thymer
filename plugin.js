@@ -9,7 +9,7 @@ class Plugin extends AppPlugin {
     this.ui.injectCSS(`
       .backref-panel {
         border-top: 1px solid var(--color-border, #e2e8f0);
-        margin: 40px 40px 80px 40px;
+        margin: 40px 0 80px 0; /* Align to left/right margins of the note */
         padding-top: 24px;
       }
       .backref-panel-header {
@@ -21,9 +21,9 @@ class Plugin extends AppPlugin {
       .backref-item { display: flex; flex-direction: column; }
       .backref-item-header { 
         display: flex; align-items: center; gap: 10px; cursor: pointer; 
-        padding: 6px 8px; border-radius: 6px; 
+        padding: 6px 0px; border-radius: 6px; 
       }
-      .backref-item-header:hover { background: var(--color-bg-secondary); }
+      .backref-item-header:hover { opacity: 0.8; }
       .backref-chevron { font-size: 10px; transition: transform 0.2s; opacity: 0.4; }
       .backref-item.expanded .backref-chevron { transform: rotate(90deg); }
       .backref-title-link { font-weight: 700; font-size: 14px; color: var(--color-text-primary); cursor: pointer; }
@@ -116,7 +116,9 @@ class Plugin extends AppPlugin {
       else if (typeof record.getBackreferences === 'function') refs = await record.getBackreferences();
 
       badge.textContent = `(${refs.length})`;
-      if (refs.length === 0) { list.innerHTML = `<div style="opacity:0.5; font-style:italic; padding-left: 20px;">No mentions.</div>`; return; }
+      
+      // Removed the "No mentions" placeholder as requested
+      if (refs.length === 0) return;
 
       const uniqueRecs = new Map();
       for (const ref of refs) if (ref.record && !uniqueRecs.has(ref.record.guid)) uniqueRecs.set(ref.record.guid, ref.record);
@@ -147,7 +149,7 @@ class Plugin extends AppPlugin {
 
         item.appendChild(header); item.appendChild(portal); list.appendChild(item);
       }
-    } catch (e) { list.innerHTML = "Error."; }
+    } catch (e) { console.error(e); }
   }
 
   async _renderPortal(record, container, panel) {
@@ -159,7 +161,6 @@ class Plugin extends AppPlugin {
       const lineMap = new Map(lines.map(l => [l.guid, l]));
       const roots = lines.filter(l => !l.parent_guid || !lineMap.has(l.parent_guid));
 
-      // Global Navigation Helper for this Portal
       const focusEditorIndex = (idx, atStart) => {
           const editors = Array.from(container.querySelectorAll('.portal-editor'));
           const target = editors[idx];
